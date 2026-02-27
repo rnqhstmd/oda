@@ -464,9 +464,124 @@ dependencies {
 5. E2E 테스트 → 회원가입 → 로그인 → 프로필 CRUD 전체 플로우
 ```
 
+### 인증 방식: OAuth 2.0 소셜 로그인 (Kakao + Google)
+
+자체 회원가입/로그인 대신 **카카오, 구글 소셜 로그인**을 기본 인증 수단으로 사용한다.
+
+#### 인증 플로우 (Authorization Code Grant)
+
+```
+1. 프론트엔드 → 카카오/구글 OAuth 인증 페이지로 리다이렉트
+2. 사용자가 소셜 로그인 승인
+3. 소셜 서버 → 프론트엔드에 Authorization Code 전달
+4. 프론트엔드 → 백엔드로 Authorization Code 전송
+   POST /api/v1/auth/oauth/{provider} { code: "...", redirectUri: "..." }
+5. 백엔드 → 소셜 서버에 Access Token 요청 (code 교환)
+6. 백엔드 → 소셜 서버에서 사용자 정보 조회 (이메일, 이름, 프로필)
+7. 백엔드 → User 생성 또는 기존 User 조회 (이메일 기준)
+8. 백엔드 → 자체 JWT 발급하여 프론트엔드에 응답
+```
+
+#### 헥사고날 구조에서의 소셜 로그인
+
+**Domain 계층**:
+- `User` 도메인에 `OAuthProvider` enum 추가 (KAKAO, GOOGLE)
+- `User`에 `oauthProvider`, `oauthId` 필드 추가 (소셜 계정 식별)
+- `passwordHash` 필드는 nullable (소셜 로그인 시 비밀번호 불필요)
+
+**Port (interface)**:
+- `OAuthPort` (Output Port): 소셜 서버와의 통신 추상화
+  - `exchangeCodeForToken(provider, code, redirectUri)` → OAuthToken
+  - `getUserInfo(provider, accessToken)` → OAuthUserInfo
+
+**Adapter (Out)**:
+- `KakaoOAuthAdapter`: Kakao OAuth API 구현
+  - Token URL: `https://kauth.kakao.com/oauth/token`
+  - UserInfo URL: `https://kapi.kakao.com/v2/user/me`
+- `GoogleOAuthAdapter`: Google OAuth API 구현
+  - Token URL: `https://oauth2.googleapis.com/token`
+  - UserInfo URL: `https://www.googleapis.com/oauth2/v2/userinfo`
+
+#### 소셜 로그인 관련 패키지 구조 추가
+
+```
+user/
+  domain/
+    model/
+      OAuthProvider.java             # Enum (KAKAO, GOOGLE)
+      OAuthUserInfo.java             # Value Object (소셜에서 받은 사용자 정보)
+    port/
+      in/
+        OAuthLoginUseCase.java       # Input Port: 소셜 로그인 유스케이스
+      out/
+        OAuthPort.java               # Output Port: 소셜 API 호출 추상화
+  application/
+    service/
+      OAuthLoginService.java         # 소셜 로그인 → User 생성/조회 → JWT 발급
+    dto/
+      OAuthLoginCommand.java         # { provider, code, redirectUri }
+      OAuthLoginResult.java          # { accessToken, refreshToken, isNewUser }
+  adapter/
+    in/web/
+      OAuthController.java           # POST /api/v1/auth/oauth/{provider}
+      dto/
+        OAuthLoginRequest.java       # { code, redirectUri }
+        OAuthLoginResponse.java      # { accessToken, refreshToken, isNewUser }
+    out/oauth/
+      KakaoOAuthAdapter.java         # OAuthPort 구현 (카카오)
+      GoogleOAuthAdapter.java        # OAuthPort 구현 (구글)
+      dto/
+        KakaoTokenResponse.java      # 카카오 토큰 응답 DTO
+        KakaoUserResponse.java       # 카카오 사용자 정보 응답 DTO
+        GoogleTokenResponse.java     # 구글 토큰 응답 DTO
+        GoogleUserResponse.java      # 구글 사용자 정보 응답 DTO
+```
+
+#### 설정 (application.yml)
+
+```yaml
+oda:
+  oauth:
+    kakao:
+      client-id: ${KAKAO_CLIENT_ID}
+      client-secret: ${KAKAO_CLIENT_SECRET}
+    google:
+      client-id: ${GOOGLE_CLIENT_ID}
+      client-secret: ${GOOGLE_CLIENT_SECRET}
+```
+
+#### TDD 구현 순서 (소셜 로그인)
+
+```
+1. Domain 테스트 → User.createFromOAuth(provider, oauthId, email, name) 팩토리 메서드
+   - 소셜 로그인으로 생성 시 passwordHash가 null 검증
+   - oauthProvider, oauthId 세팅 검증
+2. Application 테스트 → OAuthLoginService
+   - 신규 사용자: OAuthPort mock → User 생성 → JWT 발급 → isNewUser=true
+   - 기존 사용자: OAuthPort mock → User 조회 → JWT 발급 → isNewUser=false
+   - 다른 Provider로 동일 이메일 로그인 시 기존 계정 연동 처리 검증
+3. Adapter(Out/OAuth) 테스트 → KakaoOAuthAdapter + WireMock
+   - Authorization Code → Access Token 교환 테스트
+   - Access Token → 사용자 정보 조회 테스트
+   - API 오류 응답 시 예외 처리 테스트
+4. Adapter(Out/OAuth) 테스트 → GoogleOAuthAdapter + WireMock (동일 패턴)
+5. Adapter(In) 테스트 → OAuthController @WebMvcTest
+6. E2E 테스트 → 소셜 로그인 → JWT 발급 → 프로필 설정 전체 플로우
+```
+
+#### 신규 사용자 플로우
+
+```
+소셜 로그인 성공 (isNewUser=true)
+    → 프론트엔드가 프로필 설정 화면으로 이동
+    → PUT /api/v1/users/me/profile (나이, 거주지, 소득 등 입력)
+    → 동의 플래그 설정 (개인정보 + 민감정보 별도 동의)
+    → 서비스 이용 시작
+```
+
 ### 도메인 모델 핵심
 
-- `User`: Aggregate Root. 이메일, 비밀번호해시, 동의 플래그
+- `User`: Aggregate Root. 이메일, 이름, OAuth 정보(provider, oauthId), 동의 플래그
 - `UserProfile`: 상세 프로필. 나이, 거주지, 소득(암호화), 학력, 경력, 자격증
 - `IncomeInfo`: Value Object. 소득 데이터 캡슐화 (암호화/복호화 책임)
 - 소득 필드는 JPA Adapter에서 `@Convert(converter = EncryptedLongConverter.class)` 처리
@@ -496,14 +611,18 @@ dependencies {
 ### API 엔드포인트
 
 ```
-POST   /api/v1/auth/register          # 회원가입 (동의 플래그 포함)
-POST   /api/v1/auth/login             # JWT 발급
-POST   /api/v1/auth/refresh           # 토큰 갱신
+# 인증 (소셜 로그인)
+POST   /api/v1/auth/oauth/{provider}  # 소셜 로그인 (provider: kakao, google)
+POST   /api/v1/auth/refresh           # JWT 토큰 갱신
+POST   /api/v1/auth/logout            # 로그아웃 (리프레시 토큰 무효화)
+
+# 사용자 정보
 GET    /api/v1/users/me               # 내 정보 조회
 PUT    /api/v1/users/me               # 정보 수정
 GET    /api/v1/users/me/profile       # 상세 프로필 조회
-PUT    /api/v1/users/me/profile       # 프로필 수정/입력
-DELETE /api/v1/users/me               # 회원 탈퇴 (cascading 삭제)
+PUT    /api/v1/users/me/profile       # 프로필 수정/입력 (최초 로그인 후 필수)
+PUT    /api/v1/users/me/consent       # 동의 플래그 설정 (개인정보/민감정보)
+DELETE /api/v1/users/me               # 회원 탈퇴 (cascading 삭제 + 소셜 연결 해제)
 ```
 
 ---
