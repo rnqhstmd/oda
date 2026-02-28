@@ -1,0 +1,19 @@
+### Get Current User
+GET http://localhost:8080/api/v1/users/me
+Authorization: Bearer {{accessToken}}
+
+### Get Profile
+GET http://localhost:8080/api/v1/users/me/profile
+Authorization: Bearer {{accessToken}}
+
+### Update Profile
+PUT http://localhost:8080/api/v1/users/me/profile
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "birthDate": "2000-01-15",
+  "address": "서울특별시 강남구",
+  "employmentStatus": "STUDENT",
+  "incomeLevel": "LEVEL_1"
+}

@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: oda-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: oda
+      POSTGRES_USER: oda
+      POSTGRES_PASSWORD: oda
+    volumes:
+      - oda-data:/var/lib/postgresql/data
+
+volumes:
+  oda-data:

@@ -1,0 +1,29 @@
+### OAuth Login (Google)
+POST http://localhost:8080/api/v1/auth/oauth/google
+Content-Type: application/json
+
+{
+  "code": "google-auth-code",
+  "redirectUri": "http://localhost:3000/callback"
+}
+
+### OAuth Login (Kakao)
+POST http://localhost:8080/api/v1/auth/oauth/kakao
+Content-Type: application/json
+
+{
+  "code": "kakao-auth-code",
+  "redirectUri": "http://localhost:3000/callback"
+}
+
+### Refresh Token
+POST http://localhost:8080/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Logout
+POST http://localhost:8080/api/v1/auth/logout
+Authorization: Bearer {{accessToken}}
