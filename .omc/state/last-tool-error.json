@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"gh pr create --base main --head feature/01-infrastructure --title \\\"feat: 멀티모듈 Gradle 구조 전환 및 프로젝트 인프라 구성\\\" --body \\\"$(cat <<'EOF'\\n## Summary\\n- 단일 모듈 Groovy → 멀티모듈 Kotlin DSL 전환 (`apps/o...",
+  "error": "Exit code 127\n(eval):1: command not found: gh\n\n(eval):1: command not found: gh",
+  "timestamp": "2026-02-28T14:27:52.062Z",
+  "retry_count": 1
+}
