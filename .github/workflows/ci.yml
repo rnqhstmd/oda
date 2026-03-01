@@ -15,21 +15,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: oda_test
-          POSTGRES_USER: oda
-          POSTGRES_PASSWORD: oda1234
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
 
@@ -45,10 +30,6 @@ jobs:
 
       - name: Test
         run: ./gradlew test
-        env:
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/oda_test
-          SPRING_DATASOURCE_USERNAME: oda
-          SPRING_DATASOURCE_PASSWORD: oda1234
 
       - name: Test Report
         uses: dorny/test-reporter@v1
