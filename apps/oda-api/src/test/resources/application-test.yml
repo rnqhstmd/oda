@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: jdbc:tc:postgresql:15:///oda_test
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+oda:
+  jwt:
+    secret: dGVzdFNlY3JldEtleUZvckp3dFRva2VuUHJvdmlkZXJUZXN0MTIzNDU2Nzg5MA==
+    access-expiration: 1800000
+    refresh-expiration: 1209600000
+  encryption:
+    aes-key: dGVzdEtleUZvckRldmVsb3BtZW50MTIzNDU2Nzg5MDE=

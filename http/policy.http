@@ -1,0 +1,11 @@
+### Search Policies
+GET http://localhost:8080/api/v1/policies?page=0&size=10&keyword=청년
+Authorization: Bearer {{accessToken}}
+
+### Get Matched Policies
+GET http://localhost:8080/api/v1/policies/matched
+Authorization: Bearer {{accessToken}}
+
+### Check Eligibility
+GET http://localhost:8080/api/v1/policies/1/eligibility
+Authorization: Bearer {{accessToken}}
