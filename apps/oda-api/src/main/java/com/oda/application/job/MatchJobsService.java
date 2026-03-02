@@ -5,16 +5,12 @@ import com.oda.domain.job.GapAnalysis;
 import com.oda.domain.job.JobPosting;
 import com.oda.domain.job.JobPostingRepository;
 import com.oda.domain.job.JobMatchingSpec;
-import com.oda.domain.user.Education;
 import com.oda.domain.user.UserProfile;
-import com.oda.domain.user.WorkExperience;
 import com.oda.domain.user.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.Period;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -33,8 +29,8 @@ public class MatchJobsService {
                 .orElse(UserProfile.create(userId));
 
         List<String> userSkills = profile.getSkills() != null ? profile.getSkills() : Collections.emptyList();
-        int experienceYears = calculateTotalExperienceYears(profile);
-        String education = resolveHighestEducation(profile);
+        int experienceYears = profile.calculateTotalExperienceYears();
+        String education = profile.resolveHighestEducation();
 
         List<JobPosting> activeJobs = jobPostingRepository.findByActiveTrue();
 
@@ -49,25 +45,4 @@ public class MatchJobsService {
                 .collect(Collectors.toList());
     }
 
-    private int calculateTotalExperienceYears(UserProfile profile) {
-        if (profile.getWorkExperiences() == null) return 0;
-        return profile.getWorkExperiences().stream()
-                .mapToInt(this::getDurationYears)
-                .sum();
-    }
-
-    private int getDurationYears(WorkExperience we) {
-        LocalDate start = we.startDate();
-        if (start == null) return 0;
-        LocalDate end = we.isCurrent() || we.endDate() == null ? LocalDate.now() : we.endDate();
-        return Math.max(0, Period.between(start, end).getYears());
-    }
-
-    private String resolveHighestEducation(UserProfile profile) {
-        if (profile.getEducations() == null || profile.getEducations().isEmpty()) return null;
-        return profile.getEducations().stream()
-                .map(Education::degree)
-                .findFirst()
-                .orElse(null);
-    }
 }
