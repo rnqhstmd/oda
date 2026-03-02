@@ -1,8 +1,9 @@
 package com.oda.application.user;
 
-import com.oda.infrastructure.security.jwt.JwtTokenProvider;
+import com.oda.domain.user.TokenProvider;
 import com.oda.domain.user.RefreshToken;
 import com.oda.domain.user.RefreshTokenRepository;
+import com.oda.support.error.CoreException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,7 +22,7 @@ import static org.mockito.Mockito.verify;
 class AuthServiceTest {
 
     @Mock private RefreshTokenRepository refreshTokenRepository;
-    @Mock private JwtTokenProvider jwtTokenProvider;
+    @Mock private TokenProvider tokenProvider;
 
     @InjectMocks
     private AuthService authService;
@@ -33,10 +34,10 @@ class AuthServiceTest {
         Long userId = 1L;
         RefreshToken storedToken = RefreshToken.create(userId, refreshTokenStr, LocalDateTime.now().plusDays(7));
 
-        given(jwtTokenProvider.validateToken(refreshTokenStr)).willReturn(true);
+        given(tokenProvider.validateToken(refreshTokenStr)).willReturn(true);
         given(refreshTokenRepository.findByToken(refreshTokenStr)).willReturn(Optional.of(storedToken));
-        given(jwtTokenProvider.getUserIdFromToken(refreshTokenStr)).willReturn(userId);
-        given(jwtTokenProvider.createAccessToken(userId)).willReturn("new-access-token");
+        given(tokenProvider.getUserIdFromToken(refreshTokenStr)).willReturn(userId);
+        given(tokenProvider.createAccessToken(userId)).willReturn("new-access-token");
 
         // when
         String newAccessToken = authService.refreshToken(refreshTokenStr);
@@ -51,12 +52,12 @@ class AuthServiceTest {
         String expiredToken = "expired-refresh-token";
         RefreshToken storedToken = RefreshToken.create(1L, expiredToken, LocalDateTime.now().minusDays(1));
 
-        given(jwtTokenProvider.validateToken(expiredToken)).willReturn(true);
+        given(tokenProvider.validateToken(expiredToken)).willReturn(true);
         given(refreshTokenRepository.findByToken(expiredToken)).willReturn(Optional.of(storedToken));
 
         // when & then
         assertThatThrownBy(() -> authService.refreshToken(expiredToken))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(CoreException.class)
                 .hasMessageContaining("expired");
     }
 

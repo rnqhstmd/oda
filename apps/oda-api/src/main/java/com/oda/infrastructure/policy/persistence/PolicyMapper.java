@@ -4,10 +4,9 @@ import com.oda.domain.policy.EligibilityCriteria;
 import com.oda.domain.policy.Policy;
 import com.oda.domain.policy.PolicyCategory;
 import com.oda.domain.user.EmploymentStatus;
+import com.oda.infrastructure.persistence.CsvStringUtils;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,9 +20,9 @@ public class PolicyMapper {
                 entity.getMaxPersonalIncome(),
                 entity.getMaxHouseholdIncome(),
                 entity.getMaxMedianIncomePercent(),
-                parseStringList(entity.getRequiredRegions()),
+                CsvStringUtils.parse(entity.getRequiredRegions()),
                 parseEmploymentStatuses(entity.getTargetEmploymentStatuses()),
-                parseStringList(entity.getExcludeConditions())
+                CsvStringUtils.parse(entity.getExcludeConditions())
         );
 
         return Policy.reconstruct(
@@ -45,9 +44,9 @@ public class PolicyMapper {
 
     public PolicyJpaEntity toEntity(Policy policy) {
         EligibilityCriteria eligibility = policy.getEligibility();
-        String requiredRegions = toCommaString(eligibility != null ? eligibility.requiredRegions() : null);
+        String requiredRegions = CsvStringUtils.join(eligibility != null ? eligibility.requiredRegions() : null);
         String targetStatuses = toEmploymentStatusString(eligibility != null ? eligibility.targetEmploymentStatuses() : null);
-        String excludeConditions = toCommaString(eligibility != null ? eligibility.excludeConditions() : null);
+        String excludeConditions = CsvStringUtils.join(eligibility != null ? eligibility.excludeConditions() : null);
 
         return PolicyJpaEntity.create(
                 policy.getExternalId(),
@@ -72,30 +71,10 @@ public class PolicyMapper {
         );
     }
 
-    private List<String> parseStringList(String csv) {
-        if (csv == null || csv.isBlank()) {
-            return Collections.emptyList();
-        }
-        return Arrays.stream(csv.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toList());
-    }
-
     private List<EmploymentStatus> parseEmploymentStatuses(String csv) {
-        if (csv == null || csv.isBlank()) {
-            return Collections.emptyList();
-        }
-        return Arrays.stream(csv.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
+        return CsvStringUtils.parse(csv).stream()
                 .map(EmploymentStatus::valueOf)
                 .collect(Collectors.toList());
-    }
-
-    private String toCommaString(List<String> list) {
-        if (list == null || list.isEmpty()) return null;
-        return String.join(",", list);
     }
 
     private String toEmploymentStatusString(List<EmploymentStatus> list) {

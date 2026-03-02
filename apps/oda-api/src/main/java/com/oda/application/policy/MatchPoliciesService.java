@@ -25,21 +25,17 @@ public class MatchPoliciesService {
 
     public List<PolicyMatchResult> matchPolicies(Long userId) {
         UserProfile profile = userProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("UserProfile not found for userId: " + userId));
+                .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "UserProfile not found for userId: " + userId));
 
         List<Policy> activePolicies = policyRepository.findByIsActiveTrue();
 
         return activePolicies.stream()
                 .map(policy -> {
-                    Long personalIncome = profile.getIncomeInfo() != null
-                            ? profile.getIncomeInfo().personalIncome() : null;
-                    Long householdIncome = profile.getIncomeInfo() != null
-                            ? profile.getIncomeInfo().householdIncome() : null;
                     MatchResult result = PolicyMatchingSpec.evaluate(
                             policy,
                             profile.calculateAge(),
-                            personalIncome,
-                            householdIncome,
+                            profile.getPersonalIncome(),
+                            profile.getHouseholdIncome(),
                             profile.getSido(),
                             profile.getEmploymentStatus()
                     );
@@ -53,18 +49,13 @@ public class MatchPoliciesService {
         Policy policy = policyRepository.findById(policyId)
                 .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "Policy not found with id: " + policyId));
         UserProfile profile = userProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("UserProfile not found for userId: " + userId));
-
-        Long personalIncome = profile.getIncomeInfo() != null
-                ? profile.getIncomeInfo().personalIncome() : null;
-        Long householdIncome = profile.getIncomeInfo() != null
-                ? profile.getIncomeInfo().householdIncome() : null;
+                .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "UserProfile not found for userId: " + userId));
 
         return PolicyMatchingSpec.evaluate(
                 policy,
                 profile.calculateAge(),
-                personalIncome,
-                householdIncome,
+                profile.getPersonalIncome(),
+                profile.getHouseholdIncome(),
                 profile.getSido(),
                 profile.getEmploymentStatus()
         );

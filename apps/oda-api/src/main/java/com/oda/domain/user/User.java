@@ -16,6 +16,21 @@ public class User extends BaseEntity {
 
     private User() {}
 
+    public static User reconstruct(Long id, String email, String name, OAuthProvider oauthProvider,
+                                    String oauthId, String passwordHash,
+                                    boolean consentPersonalInfo, boolean consentSensitiveInfo) {
+        User user = new User();
+        user.id = id;
+        user.email = email;
+        user.name = name;
+        user.oauthProvider = oauthProvider;
+        user.oauthId = oauthId;
+        user.passwordHash = passwordHash;
+        user.consentPersonalInfo = consentPersonalInfo;
+        user.consentSensitiveInfo = consentSensitiveInfo;
+        return user;
+    }
+
     public static User createFromOAuth(OAuthProvider provider, String oauthId, String email, String name) {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("email must not be null or blank");

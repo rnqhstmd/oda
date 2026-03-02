@@ -9,6 +9,7 @@ import com.oda.domain.user.EmploymentStatus;
 import com.oda.domain.user.IncomeInfo;
 import com.oda.domain.user.UserProfile;
 import com.oda.domain.user.UserProfileRepository;
+import com.oda.support.error.CoreException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -116,7 +117,7 @@ class MatchPoliciesServiceTest {
 
         // when & then
         assertThatThrownBy(() -> matchPoliciesService.matchPolicies(userId))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(CoreException.class)
                 .hasMessageContaining("UserProfile not found");
     }
 

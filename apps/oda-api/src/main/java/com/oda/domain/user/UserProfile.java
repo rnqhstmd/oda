@@ -25,6 +25,29 @@ public class UserProfile extends BaseEntity {
 
     private UserProfile() {}
 
+    public static UserProfile reconstruct(Long id, Long userId, LocalDate birthDate, String sido,
+                                          String sigungu, IncomeInfo incomeInfo,
+                                          EmploymentStatus employmentStatus,
+                                          List<Education> educations,
+                                          List<WorkExperience> workExperiences,
+                                          List<Certification> certifications,
+                                          List<String> skills, List<String> targetJobCategories) {
+        UserProfile profile = new UserProfile();
+        profile.id = id;
+        profile.userId = userId;
+        profile.birthDate = birthDate;
+        profile.sido = sido;
+        profile.sigungu = sigungu;
+        profile.incomeInfo = incomeInfo;
+        profile.employmentStatus = employmentStatus;
+        profile.educations = educations != null ? new ArrayList<>(educations) : new ArrayList<>();
+        profile.workExperiences = workExperiences != null ? new ArrayList<>(workExperiences) : new ArrayList<>();
+        profile.certifications = certifications != null ? new ArrayList<>(certifications) : new ArrayList<>();
+        profile.skills = skills != null ? new ArrayList<>(skills) : new ArrayList<>();
+        profile.targetJobCategories = targetJobCategories != null ? new ArrayList<>(targetJobCategories) : new ArrayList<>();
+        return profile;
+    }
+
     public static UserProfile create(Long userId) {
         if (userId == null) {
             throw new IllegalArgumentException("userId must not be null");
@@ -61,10 +84,38 @@ public class UserProfile extends BaseEntity {
         this.incomeInfo = incomeInfo;
     }
 
+    public Long getPersonalIncome() {
+        return incomeInfo != null ? incomeInfo.personalIncome() : null;
+    }
+
+    public Long getHouseholdIncome() {
+        return incomeInfo != null ? incomeInfo.householdIncome() : null;
+    }
+
     public int calculateAge() {
         if (birthDate == null) {
             throw new IllegalStateException("birthDate is not set");
         }
         return Period.between(birthDate, LocalDate.now()).getYears();
+    }
+
+    public int calculateTotalExperienceYears() {
+        if (workExperiences == null) return 0;
+        return workExperiences.stream()
+                .mapToInt(we -> {
+                    LocalDate start = we.startDate();
+                    if (start == null) return 0;
+                    LocalDate end = we.isCurrent() || we.endDate() == null ? LocalDate.now() : we.endDate();
+                    return Math.max(0, Period.between(start, end).getYears());
+                })
+                .sum();
+    }
+
+    public String resolveHighestEducation() {
+        if (educations == null || educations.isEmpty()) return null;
+        return educations.stream()
+                .map(Education::degree)
+                .findFirst()
+                .orElse(null);
     }
 }

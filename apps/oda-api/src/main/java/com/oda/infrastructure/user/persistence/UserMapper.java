@@ -1,9 +1,9 @@
 package com.oda.infrastructure.user.persistence;
 
 import com.oda.domain.user.*;
+import com.oda.infrastructure.persistence.CsvStringUtils;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -13,11 +13,9 @@ public class UserMapper {
 
     public User toDomain(UserJpaEntity entity) {
         if (entity == null) return null;
-        User user = User.createFromOAuth(entity.getOauthProvider(), entity.getOauthId(),
-                entity.getEmail(), entity.getName());
-        setUserId(user, entity.getId());
-        user.updateConsent(entity.isConsentPersonalInfo(), entity.isConsentSensitiveInfo());
-        return user;
+        return User.reconstruct(entity.getId(), entity.getEmail(), entity.getName(),
+                entity.getOauthProvider(), entity.getOauthId(), entity.getPasswordHash(),
+                entity.isConsentPersonalInfo(), entity.isConsentSensitiveInfo());
     }
 
     public UserJpaEntity toEntity(User user) {
@@ -35,8 +33,6 @@ public class UserMapper {
 
     public UserProfile toDomain(UserProfileJpaEntity entity) {
         if (entity == null) return null;
-        UserProfile profile = UserProfile.create(entity.getUserId());
-        setProfileId(profile, entity.getId());
 
         IncomeInfo incomeInfo = null;
         if (entity.getPersonalIncome() != null || entity.getHouseholdIncome() != null
@@ -59,16 +55,13 @@ public class UserMapper {
                 .map(c -> new Certification(c.getName(), c.getIssuer(), c.getAcquiredDate()))
                 .collect(Collectors.toList());
 
-        List<String> skills = parseCommaSeparated(entity.getSkills());
-        List<String> targetJobCategories = parseCommaSeparated(entity.getTargetJobCategories());
+        List<String> skills = CsvStringUtils.parse(entity.getSkills());
+        List<String> targetJobCategories = CsvStringUtils.parse(entity.getTargetJobCategories());
 
-        profile.update(entity.getBirthDate(), entity.getSido(), entity.getSigungu(),
-                entity.getEmploymentStatus(), educations, workExperiences, certifications,
-                skills, targetJobCategories);
-        if (incomeInfo != null) {
-            profile.updateIncomeInfo(incomeInfo);
-        }
-        return profile;
+        return UserProfile.reconstruct(entity.getId(), entity.getUserId(),
+                entity.getBirthDate(), entity.getSido(), entity.getSigungu(),
+                incomeInfo, entity.getEmploymentStatus(),
+                educations, workExperiences, certifications, skills, targetJobCategories);
     }
 
     public UserProfileJpaEntity toEntity(UserProfile profile) {
@@ -104,10 +97,8 @@ public class UserMapper {
                         .map(c -> CertificationJpaEntity.create(c.name(), c.issuer(), c.acquiredDate()))
                         .collect(Collectors.toList());
 
-        String skills = profile.getSkills() == null ? null
-                : String.join(",", profile.getSkills());
-        String targetJobCategories = profile.getTargetJobCategories() == null ? null
-                : String.join(",", profile.getTargetJobCategories());
+        String skills = CsvStringUtils.join(profile.getSkills());
+        String targetJobCategories = CsvStringUtils.join(profile.getTargetJobCategories());
 
         entity.update(profile.getBirthDate(), profile.getSido(), profile.getSigungu(),
                 personalIncome, householdIncome, householdSize,
@@ -116,33 +107,5 @@ public class UserMapper {
         return entity;
     }
 
-    private List<String> parseCommaSeparated(String value) {
-        if (value == null || value.isBlank()) return Collections.emptyList();
-        return Arrays.stream(value.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toList());
-    }
 
-    // Reflection-free id injection via package-private setters on domain objects.
-    // Domain classes use private constructors, so we set id via reflection here.
-    private void setUserId(User user, Long id) {
-        try {
-            var field = User.class.getDeclaredField("id");
-            field.setAccessible(true);
-            field.set(user, id);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to set user id", e);
-        }
-    }
-
-    private void setProfileId(UserProfile profile, Long id) {
-        try {
-            var field = UserProfile.class.getDeclaredField("id");
-            field.setAccessible(true);
-            field.set(profile, id);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to set profile id", e);
-        }
-    }
 }

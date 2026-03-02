@@ -1,6 +1,6 @@
 package com.oda.application.user;
 
-import com.oda.infrastructure.security.jwt.JwtTokenProvider;
+import com.oda.domain.user.TokenProvider;
 import com.oda.application.user.dto.OAuthLoginCommand;
 import com.oda.application.user.dto.OAuthLoginResult;
 import com.oda.domain.user.OAuthUserInfo;
@@ -25,7 +25,7 @@ public class OAuthLoginService {
     private final OAuthPort oAuthPort;
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final JwtTokenProvider jwtTokenProvider;
+    private final TokenProvider jwtTokenProvider;
 
     @Value("${oda.jwt.refresh-expiration:604800000}")
     private long refreshExpiration;

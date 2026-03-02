@@ -3,6 +3,8 @@ package com.oda.infrastructure.user.persistence;
 import com.oda.domain.user.OAuthProvider;
 import com.oda.domain.user.User;
 import com.oda.domain.user.UserRepository;
+import com.oda.support.error.CoreException;
+import com.oda.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -30,7 +32,7 @@ public class JpaUserRepository implements UserRepository {
             return mapper.toDomain(saved);
         }
         UserJpaEntity existing = springRepo.findById(user.getId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + user.getId()));
+                .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "User not found: " + user.getId()));
         existing.update(user.getName(), user.getOauthProvider(), user.getOauthId(),
                 user.isConsentPersonalInfo(), user.isConsentSensitiveInfo());
         return mapper.toDomain(springRepo.save(existing));
